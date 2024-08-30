@@ -6,7 +6,7 @@
  * https://github.com/vha3/Hunter-Adams-RP2040-Demos/blob/master/Audio/c_Audio_Beep_Synthesis_Single_Core/beep_beep.c
  ****************************************/
 
-// 
+ 
 typedef signed int fix15 ;
 #define multfix15(a,b) ((fix15)((((signed long long)(a))*((signed long long)(b)))>>15))
 #define float2fix15(a) ((fix15)((a)*32768.0)) 

@@ -1,6 +1,6 @@
 /************************************************************
  * Discrete Summation Formula Oscillator
- * Example Implementation v2.5 (2024-08-08)
+ * Example Implementation v3.0 (2024-08-14)
  * 
  * https://github.com/rabbiabe/dsf-oscillator-pico
  * 
@@ -35,61 +35,63 @@ int main()
     core0_booting = false;
     printf(">>> both cores running\n");
 
-    printf("\n\n\n\n\nDiscrete Summation Formula Oscillator v2.4 (2024-07-14)\n=======================================================\n\n");
-    printf("Clock Speed %d MHz\n", clock_get_hz(clk_sys) / 1000000);
+    printf("\n\n\n\n\nDiscrete Summation Formula Oscillator v2.5 (2024-08-08)\n=======================================================\n\n");
+    if (VERBOSE) printf("Clock Speed %d MHz\nStarting timer at %dµs, %d Hz\n\n", clock_get_hz(clk_sys) / 1000000, SAMPLE_INTERVAL, SAMPLE_RATE);
 
-    add_repeating_timer_us(SAMPLE_INTERVAL, &timerSample_cb, NULL, &timerSample);
+    // negative SAMPLE_INTERVAL results in evenly-spaced timer calls
+    add_repeating_timer_us((-1 * SAMPLE_INTERVAL), &timerSample_cb, NULL, &timerSample); 
 
-    while (true) getEnvelope();
-
-}
-
-void getEnvelope()
-{
-    static uint8_t last_attack = 0, last_decay = 0, last_width = 0;
-
-    adc_select_input(adc_in_Attack);
-    uint16_t this_attack = adc_read();
-    if (last_attack != (this_attack >> 4)) {
-        if (VERBOSE) printf("Attack envelope changed\n");
-        last_attack = (this_attack >> 4);
-        envAttack = scale(this_attack, 0, 4095, 100, 1);
-    }
-
-    adc_select_input(adc_in_Decay);
-    uint16_t this_decay = adc_read();
-    if (last_decay != (this_decay >> 4)) {
-        if (VERBOSE) printf("Decay envelope changed\n");
-        last_decay = (this_decay >> 4);
-        envDecay = scale(this_decay, 0, 4095, 100, 1);
-    }
-
-    adc_select_input(adc_in_Width);
-    uint16_t this_width = adc_read();
-    if (last_width != (this_width >> 4)) {
-        if (VERBOSE) printf("Width envelope changed\n");
-        last_width = (this_width >> 4);
-        envScaleFactor = scale(this_width, 0, 4095, 200, 50);
-        envBase = 500 - (SAMPLE_RATE / (envScaleFactor * 2));
-    }
+    while (true) tight_loop_contents();
 
 }
 
 bool timerSample_cb(repeating_timer_t *rt)
 {
+    uint16_t dacValue;
+    fix15 param_A; 
     if (thisNote.active) {
-        if (envGoingUp) {
-            envelope += envAttack;
-        } else {
-            envelope -= envDecay;
+
+        adc_select_input(adc_in_EnvSustain);
+        envSustain = (fix15)(uscale(adc_read(), 0, 4095, param_a_min15, param_a_max15));
+
+        switch (envMode)
+        {
+        case attack:
+            adc_select_input(adc_in_EnvAttack);
+            envAttack = uscale(adc_read(), 0, 4095, envRangeMin, envRangeMax);
+            if (envCounter % envAttack == 0) envelope += envStep;
+            envCounter++;
+            if (envelope >= param_a_max15) {
+                envMode = decay;
+                envCounter = 0;
+                if (VERBOSE) printf("\nAttack -> Decay\n\n");
+            } 
+            param_A = envInvert ? envelope : one15 - envelope;
+            break;
+        
+        case decay:
+            adc_select_input(adc_in_EnvDecay);
+            envDecay = uscale(adc_read(), 0, 4095, envRangeMin, envRangeMax);
+            if (envCounter % envDecay == 0) envelope -= envStep;
+            envCounter++;
+            if (envelope <= envSustain) {
+                envMode = sustain;
+                envCounter = 0;
+                if (VERBOSE) printf("\nDecay -> Sustain\n\n");
+            } 
+            param_A = envInvert ? envelope : one15 - envelope;
+            break;
+        
+        case sustain:
+            param_A = envInvert ? envSustain : one15 - envSustain;
+            break;
+        
+        default:
+            break;
         }
-        if (envelope >= SAMPLE_RATE) {
-            if (VERBOSE) printf("Envelope peak, going down\n");
-            envelope = SAMPLE_RATE;
-            envGoingUp = false;
-        } 
-        uint16_t param_A = envBase + (envelope < 0 ? 0 : (envelope / envScaleFactor));
-        uint16_t dacValue = osc.getNextSample(param_A);
+
+        dacValue = osc.getNextSample(param_A);
+        //if (VERBOSE) printf("%d, %d\n", dacValue, param_A);
         if (dacValue > 4095) return true;
         dac.setInputCode(dacValue);
     }
@@ -100,20 +102,19 @@ bool timerSample_cb(repeating_timer_t *rt)
 void buttons_cb(uint gpio, uint32_t event_mask)
 {
     if (VERBOSE) printf("GPIO interrupt %d = %d\n", gpio, gpio_get(gpio));
-    uint8_t val;
+    int8_t val;
     switch (gpio)
     {
     case pinHarmonic:
         isHarmonic = !isHarmonic;
         gpio_put(pinStatusHarmonic, isHarmonic);
         break;
-    
-    case pinNormalize:
-        isNormalized = !isNormalized;
-        osc.normalize(isNormalized);
-        gpio_put(pinStatusNormalize, isNormalized);
+        
+    case pinEnvInvert:
+        envInvert = !envInvert;
+        gpio_put(pinStatusEnvInvert, envInvert);
         break;
-    
+        
     case pinEncCCW:
     case pinEncCW:
         val = readEncoder();
@@ -140,8 +141,8 @@ void showMultValue()
 
 void setup()
 {
-    uint32_t mask_input = (1 << pinNormalize) | (1 << pinHarmonic) | (1 << pinEncCCW) | (1 << pinEncCW);
-    uint32_t mask_output = (1 << pinStatusHarmonic) | (1 << pinStatusNormalize);
+    uint32_t mask_input = (1 << pinHarmonic) | (1 << pinEncCCW) | (1 << pinEncCW) | (1 << pinEnvInvert);
+    uint32_t mask_output = (1 << pinStatusHarmonic) | (1 << pinStatusEnvInvert);
     for (uint8_t p = 0; p < 7; p++) mask_output |= (1 << (pinMultiplierBase + p));
 
     gpio_init_mask(mask_input | mask_output);
@@ -149,44 +150,44 @@ void setup()
     gpio_set_dir_in_masked(mask_input);
     gpio_set_dir_out_masked(mask_output);
 
-    gpio_set_pulls(pinNormalize, true, false);
     gpio_set_pulls(pinHarmonic, true, false);
+    gpio_set_pulls(pinEnvInvert, true, false);
     gpio_set_pulls(pinEncCCW, true, false);
     gpio_set_pulls(pinEncCW, true, false);
 
-    gpio_set_irq_enabled_with_callback(pinNormalize, GPIO_IRQ_EDGE_FALL, true, &buttons_cb);
-    gpio_set_irq_enabled(pinHarmonic, GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled_with_callback(pinHarmonic, GPIO_IRQ_EDGE_FALL, true, &buttons_cb);
+    gpio_set_irq_enabled(pinEnvInvert, GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(pinEncCCW, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
     gpio_set_irq_enabled(pinEncCW, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
 
     gpio_put(pinStatusHarmonic, isHarmonic);
-    gpio_put(pinStatusNormalize, isNormalized);
+    gpio_put(pinStatusEnvInvert, envInvert);
 
     adc_init();
-    adc_gpio_init(pinAttack);
-    adc_gpio_init(pinDecay);
-    adc_gpio_init(pinWidth);
+    adc_gpio_init(pinEnvAttack);
+    adc_gpio_init(pinEnvDecay);
+    adc_gpio_init(pinEnvSustain);
 
     bool dac_valid = dac.begin(MCP4725A0_Addr_A00, i2c0, I2C_SPEED, pinSDA, pinSCL);
-
     if (dac_valid) {
         blinkLED(3);
     } else {
         blinkLED(0);
     }
 
-    for (uint t = 0; t < 7; t++) {
-        gpio_put(pinMultiplierBase + t, true);
-        busy_wait_ms(100);
+    if (VERBOSE) {
+        for (uint t = 0; t < 7; t++) {
+            gpio_put(pinMultiplierBase + t, true);
+            busy_wait_ms(100);
+        }
+
+        for (uint t = 0; t < 7; t++) gpio_put(pinMultiplierBase + t, false);
     }
 
-    for (uint t = 0; t < 7; t++) gpio_put(pinMultiplierBase + t, false);
-
+    for (uint m = 0; m < 128; m++) midiFreq15[m] = float2fix15(midiFreq_Hz[m]);
+    
     showMultValue();
 
-    osc.normalize(isNormalized);
-
-    for (uint m = 0; m < 128; m++) midiFreq15[m] = float2fix15(midiFreq_Hz[m]);
 
 }
 
@@ -207,6 +208,11 @@ void blinkLED(uint8_t count)
 }
 
 int32_t scale(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+uint32_t uscale(uint32_t x, uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
@@ -336,12 +342,11 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
             case 0x90:
                 lastNote = thisNote;
                 thisNote.active = true;
+                envMode = attack;
+                envelope = 0;
+                envCounter = 0;
                 fMod = multfix15(midiFreq15[thisNote.note], multfix15(modFactor15[multIndex], (isHarmonic ? one15 : root2)));
-                if (thisNote.note < 116) {
-                    osc.freqs(multfix15(midiFreq15[thisNote.note], ten15), multfix15(fMod, ten15), true);
-                } else {
-                    osc.freqs(midiFreq15[thisNote.note], fMod, false);
-                }             
+                osc.freqs(midiFreq15[thisNote.note], fMod, false);
                 gpio_put(PICO_DEFAULT_LED_PIN, true);
                 if (VERBOSE) printf("Note On: %d (%f Hz)\n      >>> Carrier = %f, Modulator = %f\n", thisNote.note, midiFreq_Hz[thisNote.note], fix2float15(midiFreq15[thisNote.note]), fix2float15(fMod));
                 break;
@@ -350,9 +355,7 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
                 if (thisNote.note == lastNote.note) {
                     thisNote.active = false;
                     gpio_put(PICO_DEFAULT_LED_PIN, false);
-                    envelope = envBase;
-                    envGoingUp = true;
-                    if (VERBOSE) printf(">>>>>Note Off: %d\nResetting Envelope\n", thisNote.note);
+                    if (VERBOSE) printf(">>>>>Note Off: %d\n", thisNote.note);
                 }
                 break;
             
