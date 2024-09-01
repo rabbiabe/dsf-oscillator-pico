@@ -1,6 +1,6 @@
 /************************************************************
  * Discrete Summation Formula Oscillator
- * Example Implementation v3.0 (2024-08-14)
+ * Example Implementation v3.1 (2024-08-30)
  * 
  * https://github.com/rabbiabe/dsf-oscillator-pico
  * 
@@ -50,8 +50,8 @@
 #define VERBOSE false // print note status and debugging messages
 
 #define SAMPLE_RATE 40000 // audio sample rate in Hz
-#define DAC_BIT_DEPTH 12
 #define SAMPLE_INTERVAL 1000000 / SAMPLE_RATE // timer callback interval in µs based on sample rate
+#define DAC_BIT_DEPTH 12
 #define I2C_SPEED 400 // i2c bus speed in kHz
 #define ENV_TIME_MIN 100 //ms
 #define ENV_TIME_MAX 1000 //ms
@@ -62,7 +62,7 @@
 constexpr uint8_t   pinEnvAttack = 26,
                     pinEnvDecay = 27,
                     pinEnvSustain = 28,
-                    pinEnvInvert = 20,
+                    pinEnvInvert = 21,
 
                     adc_in_EnvAttack = 0,
                     adc_in_EnvDecay = 1,
@@ -71,16 +71,13 @@ constexpr uint8_t   pinEnvAttack = 26,
                     pinSDA = 4,
                     pinSCL = 5,
 
-                    pinEncCW = 2,
-                    pinEncCCW = 3,
 
-                    pinHarmonic = 21,
+                    pinMult = 20,
+                    pinHarmonic = 22,
 
-                    pinMultiplierBase = 6,
+                    pinStatusMult = 11,
                     pinStatusEnvInvert = 13,
                     pinStatusHarmonic = 14;
-
-
 
 /********************
  * ENVELOPE
@@ -102,7 +99,7 @@ envelope_mode_t envMode;
 uint32_t envCounter;
 uint8_t envAttack, envDecay;
 constexpr fix15 envStep = float2fix15(0.001);
-volatile bool envInvert = true;
+volatile bool envInvert = true, multState = true;
 
 /*!
     @brief these values are used to scale the `attack` and `decay` ADC readings
@@ -118,7 +115,6 @@ constexpr float midiFreq_Hz[128] = { 8.18,8.66,9.18,9.72,10.3,10.91,11.56,12.25,
 constexpr fix15 root2 = float2fix15(1.4142135624);
 
 volatile bool isHarmonic = true;
-volatile int8_t multIndex = 4;
 
 /*!
     @brief container to hold MIDI note values
@@ -136,17 +132,7 @@ typedef struct {
 midi_note_t thisNote;
 midi_note_t lastNote;
 
-fix15 midiFreq15[128], 
-        modFactor15[8] = {
-                            float2fix15(0.2), 
-                            float2fix15(0.25), 
-                            float2fix15(0.3333333333),
-                            float2fix15(0.5),
-                            int2fix15(2),
-                            int2fix15(3),
-                            int2fix15(4),
-                            int2fix15(5),
-                            };
+fix15 midiFreq15[128], modFactor15[2] = { divfix15(int2fix15(1), int2fix15(2)), int2fix15(2) };
 
 DsfOsc osc(SAMPLE_RATE, DAC_BIT_DEPTH);
 MCP4725_PICO dac;
@@ -159,10 +145,7 @@ void setup();
 bool timerSample_cb(repeating_timer_t *rt);
 void buttons_cb(uint gpio, uint32_t event_mask);
 void blinkLED(uint8_t count);
-int32_t scale(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max);
 uint32_t uscale(uint32_t x, uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max);
-int8_t readEncoder();
-void showMultValue();
 
 /******************************
  * USB MIDI HOST FUNCTIONS

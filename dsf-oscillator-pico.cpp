@@ -98,13 +98,13 @@ uint16_t DsfOsc::getNextSample(fix15 param_a)
 
     if (param_a > param_a_max15) {
         param_a_safe = param_a_max15;
-    } else if (param_a < 0) {
-        param_a_safe = 0;
+    } else if (param_a < param_a_min15) {
+        param_a_safe = param_a_min15;
     } else {
         param_a_safe = param_a;
     }
 
-    fix15 a_squared = multfix15(param_a_safe,param_a_safe);
+    fix15 a_squared = multfix15(param_a_safe, param_a_safe);
 
     fix15 sample = divfix15((multfix15((one15 - a_squared), table_sine[countNote >> 24])), 
                             ((one15 + a_squared) - (multfix15((multfix15(two15, param_a_safe)), table_cosine[countMod >> 24]))));

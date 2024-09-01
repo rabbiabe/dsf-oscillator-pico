@@ -1,6 +1,6 @@
 /************************************************************
  * Discrete Summation Formula Oscillator
- * Example Implementation v3.0 (2024-08-14)
+ * Example Implementation v3.1 (2024-08-30)
  * 
  * https://github.com/rabbiabe/dsf-oscillator-pico
  * 
@@ -115,18 +115,10 @@ void buttons_cb(uint gpio, uint32_t event_mask)
         gpio_put(pinStatusEnvInvert, envInvert);
         break;
         
-    case pinEncCCW:
-    case pinEncCW:
-        val = readEncoder();
-        if (val) {
-            multIndex += val;
-            if (multIndex > 7) {
-                multIndex = 0;
-            } else if (multIndex < 0) {
-                multIndex = 7;
-            }
-            showMultValue();
-        }
+    case pinMult:
+        multState = !multState;
+        gpio_put(pinStatusMult, multState);
+        gpio_put(PICO_DEFAULT_LED_PIN, multState);
         break;
     
     default:
@@ -134,16 +126,10 @@ void buttons_cb(uint gpio, uint32_t event_mask)
     }
 }
 
-void showMultValue()
-{
-    for (uint8_t led = 0; led < 7; led++) gpio_put((pinMultiplierBase + (led - 1)), (led <= multIndex));
-}
-
 void setup()
 {
-    uint32_t mask_input = (1 << pinHarmonic) | (1 << pinEncCCW) | (1 << pinEncCW) | (1 << pinEnvInvert);
-    uint32_t mask_output = (1 << pinStatusHarmonic) | (1 << pinStatusEnvInvert);
-    for (uint8_t p = 0; p < 7; p++) mask_output |= (1 << (pinMultiplierBase + p));
+    uint32_t mask_input = (1 << pinHarmonic) | (1 << pinMult) | (1 << pinEnvInvert);
+    uint32_t mask_output = (1 << pinStatusHarmonic) | (1 << pinStatusEnvInvert) | (1 << pinStatusMult);
 
     gpio_init_mask(mask_input | mask_output);
 
@@ -152,16 +138,15 @@ void setup()
 
     gpio_set_pulls(pinHarmonic, true, false);
     gpio_set_pulls(pinEnvInvert, true, false);
-    gpio_set_pulls(pinEncCCW, true, false);
-    gpio_set_pulls(pinEncCW, true, false);
+    gpio_set_pulls(pinMult, true, false);
 
     gpio_set_irq_enabled_with_callback(pinHarmonic, GPIO_IRQ_EDGE_FALL, true, &buttons_cb);
     gpio_set_irq_enabled(pinEnvInvert, GPIO_IRQ_EDGE_FALL, true);
-    gpio_set_irq_enabled(pinEncCCW, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
-    gpio_set_irq_enabled(pinEncCW, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
+    gpio_set_irq_enabled(pinMult, GPIO_IRQ_EDGE_FALL, true);
 
     gpio_put(pinStatusHarmonic, isHarmonic);
     gpio_put(pinStatusEnvInvert, envInvert);
+    gpio_put(pinStatusMult, multState);
 
     adc_init();
     adc_gpio_init(pinEnvAttack);
@@ -175,20 +160,8 @@ void setup()
         blinkLED(0);
     }
 
-    if (VERBOSE) {
-        for (uint t = 0; t < 7; t++) {
-            gpio_put(pinMultiplierBase + t, true);
-            busy_wait_ms(100);
-        }
-
-        for (uint t = 0; t < 7; t++) gpio_put(pinMultiplierBase + t, false);
-    }
-
     for (uint m = 0; m < 128; m++) midiFreq15[m] = float2fix15(midiFreq_Hz[m]);
     
-    showMultValue();
-
-
 }
 
 void blinkLED(uint8_t count)
@@ -207,60 +180,9 @@ void blinkLED(uint8_t count)
     }    
 }
 
-int32_t scale(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max)
-{
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
 uint32_t uscale(uint32_t x, uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
-/**************************************************
- * readEncoder() adapted from code by Ralph S. 
- * Bacon https://github.com/RalphBacon/226-Better-Rotary-Encoder---no-switch-bounce
- **************************************************/
-
-int8_t readEncoder()
-{
-    static uint8_t lrmem = 3;
-    static int lrsum = 0;
-    static int8_t TRANS[] = {0, -1, 1, 14, 1, 0, 14, -1, -1, 14, 0, 1, 14, 1, -1, 0};
-
-    // Read BOTH pin states to deterimine validity of rotation (ie not just switch bounce)
-    int8_t l = gpio_get(pinEncCW);
-    int8_t r = gpio_get(pinEncCCW);
-
-    // Move previous value 2 bits to the left and add in our new values
-    lrmem = ((lrmem & 0x03) << 2) + (2 * l) + r;
-
-    // Convert the bit pattern to a movement indicator (14 = impossible, ie switch bounce)
-    lrsum += TRANS[lrmem];
-
-    /* encoder not in the neutral (detent) state */
-    if (lrsum % 4 != 0)
-    {
-        return 0;
-    }
-
-    /* encoder in the neutral state - clockwise rotation*/
-    if (lrsum == 4)
-    {
-        lrsum = 0;
-        return 1;
-    }
-
-    /* encoder in the neutral state - anti-clockwise rotation*/
-    if (lrsum == -4)
-    {
-        lrsum = 0;
-        return -1;
-    }
-
-    // An impossible rotation has been detected - ignore the movement
-    lrsum = 0;
-    return 0;
 }
 
 /**************************************************
@@ -345,7 +267,7 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
                 envMode = attack;
                 envelope = 0;
                 envCounter = 0;
-                fMod = multfix15(midiFreq15[thisNote.note], multfix15(modFactor15[multIndex], (isHarmonic ? one15 : root2)));
+                fMod = multfix15(midiFreq15[thisNote.note], multfix15(modFactor15[multState], (isHarmonic ? one15 : root2)));
                 osc.freqs(midiFreq15[thisNote.note], fMod, false);
                 gpio_put(PICO_DEFAULT_LED_PIN, true);
                 if (VERBOSE) printf("Note On: %d (%f Hz)\n      >>> Carrier = %f, Modulator = %f\n", thisNote.note, midiFreq_Hz[thisNote.note], fix2float15(midiFreq15[thisNote.note]), fix2float15(fMod));
