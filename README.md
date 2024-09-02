@@ -148,7 +148,7 @@ Timer interrupt callback function. Does nothing unless we have an active MIDI no
 2. Pass the newly calculated `param_a` to the oscillator and store the returned sample value
 3. Send the sample value to the DAC
 
-I added some error checking for out-of-bound DAC values but at this point I am fairly confident that the oscillator can't return an invalid value and you could probably just pass send the return value from `osc.getNextSample()` directly to the DAC.
+I added some error checking for out-of-bound DAC values but at this point I am fairly confident that the oscillator can't return an invalid value and you could probably just pass the return value from `osc.getNextSample()` directly to the DAC.
 
 ### `void buttons_cb(uint gpio, uint32_t event_mask)`
 Button interrupt callback function.
@@ -174,7 +174,8 @@ Adapted from the `usb_midi_host` demo code. Every time a new MIDI event is recei
     1. Checks to see if `thisNote.note` matches `lastNote.note` – if not, we do nothing because whatever key was released is not the note currently playing. This is done so that if you hold a second note before releasing the first, releasing the first key will not interrupt the synthesis. **This implementation is monophonic and will always play the most recent note. It does not "remember" earlier notes so all sound stops when you release the most recent key, even if you are still holding an earlier key.**
     2. If the notes match, then we mean to stop playing so `thisNote.active` is set false and the onboard LED turns off. 
 
-### usb_midi_host standard methods
+usb_midi_host standard methods
+---
 #### `void core1_main()`
 #### `void tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t num_cables_rx, uint16_t num_cables_tx)`
 #### `void tuh_midi_umount_cb(uint8_t dev_addr, uint8_t instance)`
