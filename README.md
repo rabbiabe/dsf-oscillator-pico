@@ -54,7 +54,7 @@ The constructor takes care of a number of housekeeping/setup items:
 * `dac_bit_depth`: The DAC bit depth
 
 ### uint16_t getNextSample(fix15 param_a)
-This method returns the next sample and should be called repeatedly from a timer whose period is `1,000,000  / sample_rate` (i.e., the sample rate in microseconds).
+This method returns the next sample and should be called repeatedly from a timer whose period is `1,000,000  / sample_rate` (i.e., the timer interval  in microseconds).
 
 * `param_a`: Fixed-point representation of the `a` term in the synthesis equation. This method checks the condition `param_a_min15 < param_a < param_a_max15` and limits out-of-bounds values to stay within the specifiewds range.
 
