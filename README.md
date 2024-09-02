@@ -8,22 +8,14 @@ Demo video
 [Screen Shot of Demo Video Goes Here](**NEED LINK**)
 
 ### Folder Structure
-* `/dsf-oscillator-pico` 
-  Library source
-  CMakeLists.txt for example program
-  * `/inc`
-    Header file defining `fix15` type and necessary conversion and arithmetic macros
+* `/dsf-oscillator-pico` Library source, CMakeLists.txt for example program
+  * `/inc` Header file defining `fix15` type and necessary conversion and arithmetic macros
   * `/example`
     * `/lib`
-      * `/MCP4725_PICO`
-        DAC library (see "Dependencies" below)
-      * `/usb_midi_host`
-        USB-MIDI host library (see "Dependencies" below)
-    * `/src`
-      Example source code
-  * `/resources`
-    Hardware schematic for example program
-    Documentation images
+      * `/MCP4725_PICO` DAC library (see "Dependencies" below)
+      * `/usb_midi_host` USB-MIDI host library (see "Dependencies" below)
+    * `/src` Example source code
+  * `/resources` Hardware schematic for example program, Documentation images
 
 Implementation
 ===
@@ -112,7 +104,7 @@ Example Code
 * `envRangeMin`, `envRangeMax`: integer values setting the boundaries of how many sample timer cycles to wait before incrementing/decrementing envelope. These values are calculated by scaling `ENV_TIME_x` by `param_a_range` and then dividing by `SAMPLE_INTERVAL` (i.e., the length between each timer call). These values are later used as the output boundaries in `uscale()` to calculate the actual envelope-segment timing. Using integer values here may result in envelope-length rounding errors on the order of +/-20ms. Rewriting the envelope code to use `fix15` instead of `uint8_t` would avoid these rounding errors but I doubt I could really hear a 20ms difference so I didn't bother. Also using `uint8_t` presents a theoretical limit of 6.4s per envelope segment which seems like plenty but if you were dying for a longer envelope switching to `uint16_t` should get you close to a half hour per segment. You do you.
 * `envInvert`: Within the envelope "Attack" indicates that `param_a` is incrementing and "Decay" indicates that it is decrementing, but the output may sound backward depending on other settings – sometimes sounding like it is "opening" during the attack phase and "closing" during the decay phase, sometimes vice versa. 
 
-![what's happening internally](**NEED IMAGE**)    ![one way it sounds](**NEED IMAGE**)    ![the other way it sounds](**NEED IMAGE**)
+![what's happening internally](resources/env1.jpg)    ![one way it sounds](resources/env2.jpg)    ![the other way it sounds](resources/env3.jpg)
 
 To me it sounds like the envelope "changes direction" depending on whether the modulator frequency is above or below the carrier frequency. **It's all rock 'n' roll so whatever sounds "good" to you** – I added this parameter so the user could easily invert the envelope if they want to change the envelope's apparent direction.
 
