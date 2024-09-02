@@ -11,10 +11,10 @@ Demo video
   * `/inc`
     Header file defining `fix15` type and necessary conversion and arithmetic macros
   * `/example`
-    * /lib
-      * /MCP4725_PICO
+    * `/lib`
+      * `/MCP4725_PICO`
         DAC library (see "Dependencies" below)
-      * /usb_midi_host
+      * `/usb_midi_host`
         USB-MIDI host library (see "Dependencies" below)
     * `/src`
       Example source code
