@@ -91,7 +91,6 @@ bool timerSample_cb(repeating_timer_t *rt)
         }
 
         dacValue = osc.getNextSample(param_A);
-        //if (VERBOSE) printf("%d, %d\n", dacValue, param_A);
         if (dacValue > 4095) return true;
         dac.setInputCode(dacValue);
     }
@@ -118,7 +117,6 @@ void buttons_cb(uint gpio, uint32_t event_mask)
     case pinMult:
         multState = !multState;
         gpio_put(pinStatusMult, multState);
-        gpio_put(PICO_DEFAULT_LED_PIN, multState);
         break;
     
     default:

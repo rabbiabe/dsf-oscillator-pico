@@ -39,10 +39,11 @@
  */
 #define two32 4294967296.0
 
-constexpr fix15 one15 = int2fix15(1);
-constexpr fix15 two15 = int2fix15(2);
-constexpr fix15 param_a_max15 = divfix15(int2fix15(900), int2fix15(1000));
-constexpr fix15 param_a_min15 = divfix15(int2fix15(100), int2fix15(1000));
+constexpr fix15 one15 = int2fix15(1),
+                two15 = int2fix15(2),
+                param_a_max15 = divfix15(int2fix15(900), int2fix15(1000)),
+                param_a_min15 = divfix15(int2fix15(100), int2fix15(1000)),
+                param_a_range = param_a_max15 - param_a_min15;
 
 /*!
     @brief Discrete Summation Formula Oscillator class.
