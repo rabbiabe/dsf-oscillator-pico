@@ -8,7 +8,7 @@ Demo video
 [Screen Shot of Demo Video Goes Here](**NEED LINK**)
 
 ### Folder Structure
-* `DSF-OSCILLATOR-PICO` 
+* `/dsf-oscillator-pico` 
   Library source
   CMakeLists.txt for example program
   * `/inc`
