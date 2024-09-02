@@ -1,8 +1,11 @@
 # dsf-oscillator-pico
-Digital audio synthesis oscillator based on James A. Moorer's 1975 paper "The Synthesis of Complex Audio Spectra by Means of Discrete Summation Formulae;" coded for Raspberry Pi Pico.
+Digital audio synthesis oscillator based on [James A. Moorer's 1975 paper "The Synthesis of Complex Audio Spectra by Means of Discrete Summation Formulae;"](https://ccrma.stanford.edu/files/papers/stanm5.pdf) coded for Raspberry Pi Pico.
+
+I first learned about this synthesis method from [Prof. Aaron Lanterman's video](https://www.youtube.com/watch?v=IoAc2241gx8) where he explained the method and demonstrated some code for a software-only implementation. 
 
 Demo video
 ===
+[Screen Shot of Demo Video Goes Here](**NEED LINK**)
 
 ### Folder Structure
 * `DSF-OSCILLATOR-PICO` 
@@ -180,4 +183,4 @@ usb_midi_host standard methods
 #### `void tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t num_cables_rx, uint16_t num_cables_tx)`
 #### `void tuh_midi_umount_cb(uint8_t dev_addr, uint8_t instance)`
 #### `void tuh_midi_tx_cb(uint8_t dev_addr)`
-These functions are copied without changes from the `usb_midi_host` demo code. See documentation there.
+*These functions are copied without changes from the `usb_midi_host` demo code. See documentation there.*
