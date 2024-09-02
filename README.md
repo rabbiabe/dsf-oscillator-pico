@@ -135,14 +135,16 @@ Timer interrupt callback function. Does nothing unless we have an active MIDI no
     1. Attack:
         1. Read `attack` time from potentiometer
         2. See if we've had enough cycles to increment, and if so increment the envelope
-        3. Check if we have hit or exceeded `param_a_max15`. If we have, switch to Decay and reset the counter 
-        4. Check if the envelope is inverted or not, and calculate out the right `param_a` value 
+        3. Increment the cycle counter
+        4. Check if we have hit or exceeded `param_a_max15`. If we have, switch to Decay and reset the counter 
+        5. Check if the envelope is inverted or not, and calculate the correct `param_a` value 
     2. Decay:
         1. Read `decay` time from potentiometer
         2. See if we've had enough cycles to increment, and if so increment the envelope
-        3. Check if we have hit or gone below the `sustain` value. If we have, switch to Sustain and reset the counter 
-        4. Check if the envelope is inverted or not, and calculate out the right `param_a` value 
-    3. Sustain: Check if the envelope is inverted or not, and calculate out the right `param_a` value 
+        3. Increment the cycle counter
+        4. Check if we have hit or gone below the `sustain` value. If we have, switch to Sustain and reset the counter 
+        5. Check if the envelope is inverted or not, and calculate the correct `param_a` value 
+    3. Sustain: Check if the envelope is inverted or not, and calculate the correct `param_a` value.  
 2. Pass the newly calculated `param_a` to the oscillator and store the returned sample value
 3. Send the sample value to the DAC
 
