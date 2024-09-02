@@ -106,9 +106,11 @@ Example Code
 * `ENV_TIME_MAX`: maximum Attack/Decay time in milliseconds 
 * `envelope_mode_t`: enumeration of envelope modes, includes `release` in case anyone wants to implement that functionality :>
 * `envStep`: constant representing the step size – could be anything, but 0.001 makes it easy to convert microsecond timekeeping into millisecond envelope durations.
-* `envRangeMin`, `envRangeMax`: integer values setting the boundaries of how many sample timer cycles to wait before incrementing/decrementing envelope. These values are calculated by scaling `ENV_TIME_x` by `param_a_range` and then dividing by `SAMPLE_INTERVAL` (i.e., the length between each timer call). These values are later used as the output boundaries in `uscale()` to calculate the actual envelope-segment timing. Using integer values here may result in envelope-length rounding errors on the order of +/-20ms. Rewriting the envelope code to use `fix15` instead of `uint8_t` would avoid these rounding errors but I think I could really hear a 20ms difference so I didn't bother. Also using uint8_t presents a theoretical limit of 6.4s per envelope segment which seems like plenty but if you were dying for a longer envelope switching to `uint16_t` should get you close to a half hour per segment. You do you.
+* `envRangeMin`, `envRangeMax`: integer values setting the boundaries of how many sample timer cycles to wait before incrementing/decrementing envelope. These values are calculated by scaling `ENV_TIME_x` by `param_a_range` and then dividing by `SAMPLE_INTERVAL` (i.e., the length between each timer call). These values are later used as the output boundaries in `uscale()` to calculate the actual envelope-segment timing. Using integer values here may result in envelope-length rounding errors on the order of +/-20ms. Rewriting the envelope code to use `fix15` instead of `uint8_t` would avoid these rounding errors but I doubt I could really hear a 20ms difference so I didn't bother. Also using `uint8_t` presents a theoretical limit of 6.4s per envelope segment which seems like plenty but if you were dying for a longer envelope switching to `uint16_t` should get you close to a half hour per segment. You do you.
 * `envInvert`: Within the envelope "Attack" indicates that `param_a` is incrementing and "Decay" indicates that it is decrementing, but the output may sound backward depending on other settings – sometimes sounding like it is "opening" during the attack phase and "closing" during the decay phase, sometimes vice versa. 
+
 ![what's happening internally](**NEED IMAGE**)    ![one way it sounds](**NEED IMAGE**)    ![the other way it sounds](**NEED IMAGE**)
+
 To me it sounds like the envelope "changes direction" depending on whether the modulator frequency is above or below the carrier frequency. **It's all rock 'n' roll so whatever sounds "good" to you** – I added this parameter so the user could easily invert the envelope if they want to change the envelope's apparent direction.
 
 #### MIDI & Notes
@@ -130,12 +132,12 @@ Basic setup functionality like initializing pins, filling the `midiFreq15` array
 Timer interrupt callback function. Does nothing unless we have an active MIDI note. When active, it follows these steps:
 1. Read `sustain` value from potentiometer (will always be between `param_a_min15` and `param_a_max15`)
 2. Determine which envelope mode we are in
-  1. Attack
+  1. Attack:
     1. Read `attack` time from potentiometer
     2. See if we've had enough cycles to increment, and if so increment the envelope
     3. Check if we have hit or exceeded `param_a_max15`. If we have, switch to Decay and reset the counter 
     4. Check if the envelope is inverted or not, and calculate out the right `param_a` value 
-  2. Decay
+  2. Decay:
     1. Read `decay` time from potentiometer
     2. See if we've had enough cycles to increment, and if so increment the envelope
     3. Check if we have hit or gone below the `sustain` value. If we have, switch to Sustain and reset the counter 
