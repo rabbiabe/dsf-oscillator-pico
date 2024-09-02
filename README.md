@@ -56,22 +56,22 @@ The constructor takes care of a number of housekeeping/setup items:
 ### uint16_t getNextSample(fix15 param_a)
 This method returns the next sample and should be called repeatedly from a timer whose period is `1,000,000  / sample_rate` (i.e., the timer interval  in microseconds).
 
-* `param_a`: Fixed-point representation of the `a` term in the synthesis equation. This method checks the condition `param_a_min15 < param_a < param_a_max15` and limits out-of-bounds values to stay within the specifiewds range.
+* `param_a`: Fixed-point representation of the `a` term in the synthesis equation. This method checks the condition `param_a_min15 < param_a < param_a_max15` and limits out-of-bounds values to stay within the specified range.
 
 `getNextSample` returns an unsigned 16-bit value within the initialized DAC range, which can be passed directly to the DAC.
 
 ### void freqs(fix15 freqNote, fix15 freqMod, bool reset = true)
 This method sets the carrier and modulator frequencies. By default, it also resets the sine and cosine counters to zero; pass a `false` value for `reset` to override this behavior.
 
-`freqNote`: fixed-point carrier frequency in Hz
-`freqMod`: fixed-point modulator frequency in Hz
-`reset`: if `true`, resets sine and cosine counters to zero
+* `freqNote`: fixed-point carrier frequency in Hz
+* `freqMod`: fixed-point modulator frequency in Hz
+* `reset`: if `true`, resets sine and cosine counters to zero
 
 ### void freqs(fix15 freqMod, bool reset = false)
 This overload allows you to alter the modulator frequency without changing the carrier frequency. By default, it **does not** reset the sine and cosine counters; pass a `true` value for `reset` to override this behavior.
 
-`freqMod`: fixed-point modulator frequency in Hz
-`reset`: if `true`, resets sine and cosine counters to zero. **N.B.: passing a `true` value for `reset` will reset BOTH counters.**
+* `freqMod`: fixed-point modulator frequency in Hz
+* `reset`: if `true`, resets sine and cosine counters to zero. **N.B.: passing a `true` value for `reset` will reset BOTH counters.**
 
 ### void resetCount()
 This method resets both sine and cosine counters.
@@ -95,30 +95,30 @@ Example Code
 * [usb_midi_host](https://github.com/rppicomidi/usb_midi_host) for MIDI input. Place in `./example/lib/usb_midi_host` and copy `tusb_config.h` into `./example/`
 
 ### Data Structures and Definitions
-`VERBOSE`: if true, program will output note status and debugging messages via UART serial
-`SAMPLE_RATE`: audio sample rate in Hz
-`SAMPLE_INTERVAL`: timer callback interval in µs, calculated based on sample rate
-`DAC_BIT_DEPTH`: DAC bit depth
-`I2C_SPEED`: i2c bus speed in kHz, passed to MCP4725 constructor
+* `VERBOSE`: if true, program will output note status and debugging messages via UART serial
+* `SAMPLE_RATE`: audio sample rate in Hz
+* `SAMPLE_INTERVAL`: timer callback interval in µs, calculated based on sample rate
+* `DAC_BIT_DEPTH`: DAC bit depth
+* `I2C_SPEED`: i2c bus speed in kHz, passed to MCP4725 constructor
 
 #### ADS Envelope
-`ENV_TIME_MIN`: minimum Attack/Decay time in milliseconds
-`ENV_TIME_MAX`: maximum Attack/Decay time in milliseconds 
-`envelope_mode_t`: enumeration of envelope modes, includes `release` in case anyone wants to implement that functionality :>
-`envStep`: constant representing the step size – could be anything, but 0.001 makes it easy to convert microsecond timekeeping into millisecond envelope durations.
-`envRangeMin`, `envRangeMax`: integer values representing how many sample timer cycles to wait before incrementing/decrementing envelope. Value is calculated by scaling `ENV_TIME_x` by `param_a_range` and then dividing by `SAMPLE_INTERVAL` (i.e., the length between each timer call). We need to use integer values (not `fix15`) to ensure these constants work with `uscale()` (see below), and rounding errors could give us approx. +/-20ms margin of error on envelope length. The default values for `ENV_TIME_MIN`, `ENV_TIME_MAX`, and `param_a_range` result in clean integer values for `envRangeMin` and `envRangeMax`, but a change in any of those three values may introduce some error.
-`envInvert`: Within the envelope "Attack" indicates that `param_a` is incrementing and "Decay" indicates that it is decrementing, but the output may sound backward depending on other settings – sometimes sounding like it is "opening" during the attack phase and "closing" during the decay phase, sometimes vice versa. 
+* `ENV_TIME_MIN`: minimum Attack/Decay time in milliseconds
+* `ENV_TIME_MAX`: maximum Attack/Decay time in milliseconds 
+* `envelope_mode_t`: enumeration of envelope modes, includes `release` in case anyone wants to implement that functionality :>
+* `envStep`: constant representing the step size – could be anything, but 0.001 makes it easy to convert microsecond timekeeping into millisecond envelope durations.
+* `envRangeMin`, `envRangeMax`: integer values representing how many sample timer cycles to wait before incrementing/decrementing envelope. Value is calculated by scaling `ENV_TIME_x` by `param_a_range` and then dividing by `SAMPLE_INTERVAL` (i.e., the length between each timer call). We need to use integer values (not `fix15`) to ensure these constants work with `uscale()` (see below), and rounding errors could give us approx. +/-20ms margin of error on envelope length. The default values for `ENV_TIME_MIN`, `ENV_TIME_MAX`, and `param_a_range` result in clean integer values for `envRangeMin` and `envRangeMax`, but a change in any of those three values may introduce some error.
+* `envInvert`: Within the envelope "Attack" indicates that `param_a` is incrementing and "Decay" indicates that it is decrementing, but the output may sound backward depending on other settings – sometimes sounding like it is "opening" during the attack phase and "closing" during the decay phase, sometimes vice versa. 
 ![what's happening internally](**NEED IMAGE**)    ![one way it sounds](**NEED IMAGE**)    ![the other way it sounds](**NEED IMAGE**)
 To me it sounds like the envelope "changes direction" depending on whether the modulator frequency is above or below the carrier frequency. **It's all rock 'n' roll so whatever sounds "good" to you** – I added this parameter so the user could easily invert the envelope if they want to change the envelope's apparent direction.
 
 #### MIDI & Notes
-`midi_note_t`: struct holding MIDI note data and a `bool` flag indicating whether the note is currently active
-`midiFreq_Hz`: array of floating-point MIDI note frequencies in Hz
-`midiFreq15`: fixed-point array that gets filled during setup with fixed-point MIDI note frequencies in Hz
-`modFactor15`: two-element array for easy access to modulator multipliers 0.5 and 2
-`root2`: fixed point representation of sqrt(2), used for inharmonic modulator frequencies
-`isHarmonic`: state variable for whether we want harmonic or inharmonic output. When this is `false`, the modulator frequency is multiplied by `root2` to get an inharmonic tone.
-`multState`: state variable that determines the relationship of carrier and modulator frequencies: half when `false`, double when `true`. There's no real restriction on how you determine carrier vs modulator frequency (and apparently no requirement that there be any fixed relationship between the two). I picked these two values because they consistently produced musically usable tones across a wide octave range. You could substitute any other two numbers for `modFactor15` and get different results without changing the functional code.
+* `midi_note_t`: struct holding MIDI note data and a `bool` flag indicating whether the note is currently active
+* `midiFreq_Hz`: array of floating-point MIDI note frequencies in Hz
+* `midiFreq15`: fixed-point array that gets filled during setup with fixed-point MIDI note frequencies in Hz
+* `modFactor15`: two-element array for easy access to modulator multipliers 0.5 and 2
+* `root2`: fixed point representation of sqrt(2), used for inharmonic modulator frequencies
+* `isHarmonic`: state variable for whether we want harmonic or inharmonic output. When this is `false`, the modulator frequency is multiplied by `root2` to get an inharmonic tone.
+* `multState`: state variable that determines the relationship of carrier and modulator frequencies: half when `false`, double when `true`. There's no real restriction on how you determine carrier vs modulator frequency (and apparently no requirement that there be any fixed relationship between the two). I picked these two values because they consistently produced musically usable tones across a wide octave range. You could substitute any other two numbers for `modFactor15` and get different results without changing the functional code.
 
 
 Functions
