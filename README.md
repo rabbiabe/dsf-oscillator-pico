@@ -86,8 +86,8 @@ The hardware uses three push buttons and three potentiometers for input, as well
 Example Code
 ---
 ### Dependencies
-* [MCP4725_PICO](https://github.com/gavinlyonsrepo/MCP4725_PICO) to control the DAC. Place in `./example/lib/MCP4725_PICO`
-* [usb_midi_host](https://github.com/rppicomidi/usb_midi_host) for MIDI input. Place in `./example/lib/usb_midi_host` and copy `tusb_config.h` into `./example/`
+* [MCP4725_PICO](https://github.com/gavinlyonsrepo/MCP4725_PICO) to control the DAC. Place in `/dsf-oscillator-pico/example/lib/MCP4725_PICO`
+* [usb_midi_host](https://github.com/rppicomidi/usb_midi_host) for MIDI input. Place in `/dsf-oscillator-pico/example/lib/usb_midi_host` and copy `tusb_config.h` into `/dsf-oscillator-pico/example/`
 
 ### Data Structures and Definitions
 * `VERBOSE`: if true, program will output note status and debugging messages via UART serial
@@ -102,7 +102,7 @@ Example Code
 * `envelope_mode_t`: enumeration of envelope modes, includes `release` in case anyone wants to implement that functionality :>
 * `envStep`: constant representing the step size – could be anything, but 0.001 makes it easy to convert microsecond timekeeping into millisecond envelope durations.
 * `envRangeMin`, `envRangeMax`: integer values setting the boundaries of how many sample timer cycles to wait before incrementing/decrementing envelope. These values are calculated by scaling `ENV_TIME_x` by `param_a_range` and then dividing by `SAMPLE_INTERVAL` (i.e., the length between each timer call). These values are later used as the output boundaries in `uscale()` to calculate the actual envelope-segment timing. Using integer values here may result in envelope-length rounding errors on the order of +/-20ms. Rewriting the envelope code to use `fix15` instead of `uint8_t` would avoid these rounding errors but I doubt I could really hear a 20ms difference so I didn't bother. Also using `uint8_t` presents a theoretical limit of 6.4s per envelope segment which seems like plenty but if you were dying for a longer envelope switching to `uint16_t` should get you close to a half hour per segment. You do you.
-* `envInvert`: Within the envelope "Attack" indicates that `param_a` is incrementing and "Decay" indicates that it is decrementing, but the output may sound backward depending on other settings – sometimes sounding like it is "opening" during the attack phase and "closing" during the decay phase, sometimes vice versa. 
+* `envInvert`: Within the envelope "Attack" indicates that `param_a` is incrementing and "Decay" indicates that it is decrementing, but the output may sound backward depending on other settings – sometimes sounding like it is "opening" during the attack phase and "closing" during the decay phase, sometimes vice versa. Behold my genius illustrations:
 
 ![what's happening internally](resources/env1.jpg)    ![one way it sounds](resources/env2.jpg)    ![the other way it sounds](resources/env3.jpg)
 
