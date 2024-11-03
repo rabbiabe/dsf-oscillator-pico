@@ -399,6 +399,8 @@ FodyWeavers.xsd
 .DS_Store
 /build
 /DOCS GITIGNORE
-/example/lib
 /.vscode
 pico_sdk_import.cmake
+example/lib/MCP4725_PICO
+example/lib/pico_encoder
+example/lib/usb_midi_host
