@@ -401,3 +401,4 @@ FodyWeavers.xsd
 /DOCS GITIGNORE
 /example/lib
 /.vscode
+pico_sdk_import.cmake

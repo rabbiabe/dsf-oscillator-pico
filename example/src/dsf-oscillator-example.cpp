@@ -98,10 +98,17 @@ bool timerSample_cb(repeating_timer_t *rt)
     return true;
 }
 
+void inline showStrangeKey()
+{
+    gpio_clr_mask(0xF << pinBarGraphStart);
+    gpio_set_mask((strangeKeyIndex + 1) << pinBarGraphStart);
+}
+
 void buttons_cb(uint gpio, uint32_t event_mask)
 {
     if (VERBOSE) printf("GPIO interrupt %d = %d\n", gpio, gpio_get(gpio));
     int8_t val;
+    button_state_t btn;
     switch (gpio)
     {
     case pinHarmonic:
@@ -118,6 +125,27 @@ void buttons_cb(uint gpio, uint32_t event_mask)
         multState = !multState;
         gpio_put(pinStatusMult, multState);
         break;
+
+    case pinEncCW:
+    case pinEncCCW:
+        val = strangeControl.read();
+        if (val != 0) {
+            strangeKeyIndex += val;
+            if (strangeKeyIndex > 7) strangeKeyIndex = 0;
+            if (strangeKeyIndex < 0) strangeKeyIndex = 7;
+            showStrangeKey();
+        }
+        break;
+
+    case pinEncSW:
+        btn = strangeControl.buttonPress(event_mask);
+        if (btn == BTN_DOWN) strangeMode = !strangeMode;
+        if (strangeMode) {
+            showStrangeKey();
+        } else {
+            gpio_clr_mask(0xF << pinBarGraphStart);
+        }
+        break;
     
     default:
         break;
@@ -126,8 +154,9 @@ void buttons_cb(uint gpio, uint32_t event_mask)
 
 void setup()
 {
-    uint32_t mask_input = (1 << pinHarmonic) | (1 << pinMult) | (1 << pinEnvInvert);
+    uint32_t mask_input = (1 << pinHarmonic) | (1 << pinMult) | (1 << pinEnvInvert) | (1 << pinEncCCW) | (1 << pinEncCW) | (1 << pinEncSW);
     uint32_t mask_output = (1 << pinStatusHarmonic) | (1 << pinStatusEnvInvert) | (1 << pinStatusMult);
+    for (uint8_t m = pinBarGraphStart; m < (pinBarGraphStart + 8); m++) mask_output |= (1 << m);
 
     gpio_init_mask(mask_input | mask_output);
 
@@ -262,11 +291,15 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
             case 0x90:
                 lastNote = thisNote;
                 thisNote.active = true;
+                if (strangeMode) {
+                    osc.freqs(midiFreq15[strangeModeRoots[strangeKeyIndex]], midiFreq15[thisNote.note], false);
+                } else {
+                    fMod = multfix15(midiFreq15[thisNote.note], multfix15(modFactor15[multState], (isHarmonic ? one15 : root2)));
+                    osc.freqs(midiFreq15[thisNote.note], fMod, false);
+                }
                 envMode = attack;
                 envelope = 0;
                 envCounter = 0;
-                fMod = multfix15(midiFreq15[thisNote.note], multfix15(modFactor15[multState], (isHarmonic ? one15 : root2)));
-                osc.freqs(midiFreq15[thisNote.note], fMod, false);
                 gpio_put(PICO_DEFAULT_LED_PIN, true);
                 if (VERBOSE) printf("Note On: %d (%f Hz)\n      >>> Carrier = %f, Modulator = %f\n", thisNote.note, midiFreq_Hz[thisNote.note], fix2float15(midiFreq15[thisNote.note]), fix2float15(fMod));
                 break;

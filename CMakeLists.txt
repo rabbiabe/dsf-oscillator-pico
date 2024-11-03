@@ -1,3 +1,19 @@
+# == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
+if(WIN32)
+    set(USERHOME $ENV{USERPROFILE})
+else()
+    set(USERHOME $ENV{HOME})
+endif()
+set(sdkVersion 2.0.0)
+set(toolchainVersion 13_3_Rel1)
+set(picotoolVersion 2.0.0)
+set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
+if (EXISTS ${picoVscode})
+    include(${picoVscode})
+endif()
+# ====================================================================================
+set(PICO_BOARD pico CACHE STRING "Board type")
+
 cmake_minimum_required(VERSION 3.5)
 
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
@@ -17,7 +33,7 @@ set(PICO_CXX_ENABLE_EXCEPTIONS 1)
 
 pico_sdk_init()
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/example/src/ PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/example/src/ PRIVATE ${CMAKE_CURRENT_LIST_DIR}/inc $ENV{PICO_SDK_PATH}/lib/tinyusb/hw/mcu/raspberry_pi/Pico-PIO-USB/src)
 
 add_library(MCP4725_PICO INTERFACE)
 
@@ -26,6 +42,14 @@ target_sources(MCP4725_PICO INTERFACE
 )
 
 target_include_directories(MCP4725_PICO INTERFACE ${CMAKE_CURRENT_LIST_DIR}/example/lib/MCP4725_PICO/include/mcp4725/)
+
+add_library(pico_encoder INTERFACE)
+
+target_sources(pico_encoder INTERFACE
+  ${CMAKE_CURRENT_LIST_DIR}/example/lib/pico_encoder/pico_encoder.cpp
+)
+
+target_include_directories(pico_encoder INTERFACE ${CMAKE_CURRENT_LIST_DIR}/example/lib/pico_encoder/)
 
 add_library(usb_midi_host INTERFACE)
 
@@ -52,4 +76,5 @@ target_link_libraries(${PROJECT_NAME}
     tinyusb_pico_pio_usb
     usb_midi_host
     MCP4725_PICO
+    pico_encoder
 )
