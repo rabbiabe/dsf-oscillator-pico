@@ -77,9 +77,9 @@ The example code implements monophonic oscillator with a built-in ADS envelope (
 
 Hardware Setup
 ---
-[Click here for PDF Schematic](resources/dsf-example-schematic-3.1.pdf)
+[Click here for PDF Schematic](resources/dsf-example-schematic-3.2.pdf)
 
-![Schematic](resources/dsf-example-schematic-3.1.png)
+![Schematic](resources/dsf-example-schematic-3.2.png)
 
 The hardware uses three push buttons and three potentiometers for input, as well as relying on USB-MIDI for note input. Output goes through an MCP4725 12-bit i2c DAC, with two op amps in parallel driving a speaker. The schematic also shows hookups for indicator lights showing the state of the three `bool` flags controlled by the push buttons, with a key to the indicator colors shown in the [demo video](**need link for when that's done**).
 
