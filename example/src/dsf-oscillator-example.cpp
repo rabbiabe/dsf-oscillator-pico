@@ -100,8 +100,21 @@ bool timerSample_cb(repeating_timer_t *rt)
 
 void inline showStrangeKey()
 {
-    gpio_clr_mask(0xF << pinBarGraphStart);
-    gpio_set_mask((strangeKeyIndex + 1) << pinBarGraphStart);
+    uint32_t barGraphSetMask = 0;
+    uint32_t barGraphClearMask = (0xFF << pinBarGraphStart);
+    gpio_clr_mask(barGraphClearMask);
+    if (VERBOSE) {
+        printf("barGraphClearMask = %d, clearing pins ", barGraphClearMask);
+        for (int8_t b = 31; b >= 0; b--) printf("%d", ((barGraphClearMask >> b) & 1));
+        printf("\n");
+    }
+    for (uint pos = 0; pos <= strangeKeyIndex; pos++) barGraphSetMask |= (1 << (pinBarGraphStart + pos));
+    if (VERBOSE) {
+        printf("strangeKeyIndex = %d, barGraphSetMask = %d [", strangeKeyIndex, barGraphSetMask);
+        for (int8_t b = 31; b >= 0; b--) printf("%d", ((barGraphSetMask >> b) & 1));
+        printf("]\n");
+    }
+    gpio_set_mask(barGraphSetMask);
 }
 
 void buttons_cb(uint gpio, uint32_t event_mask)
@@ -128,12 +141,16 @@ void buttons_cb(uint gpio, uint32_t event_mask)
 
     case pinEncCW:
     case pinEncCCW:
-        val = strangeControl.read();
-        if (val != 0) {
-            strangeKeyIndex += val;
-            if (strangeKeyIndex > 7) strangeKeyIndex = 0;
-            if (strangeKeyIndex < 0) strangeKeyIndex = 7;
-            showStrangeKey();
+        if (strangeMode) {
+            val = strangeControl.read();
+            if (VERBOSE) printf("Encoder turned, value %d\n", val);
+            if (val != 0) {
+                strangeKeyIndex += val;
+                if (strangeKeyIndex > 7) strangeKeyIndex = 0;
+                if (strangeKeyIndex < 0) strangeKeyIndex = 7;
+                if (VERBOSE) printf("New index %d\n", strangeKeyIndex);
+                showStrangeKey();
+            }
         }
         break;
 
@@ -142,8 +159,10 @@ void buttons_cb(uint gpio, uint32_t event_mask)
         if (btn == BTN_DOWN) strangeMode = !strangeMode;
         if (strangeMode) {
             showStrangeKey();
+            if (VERBOSE) printf("strangeMode engaged (%d)\n", strangeMode);
         } else {
             gpio_clr_mask(0xF << pinBarGraphStart);
+            if (VERBOSE) printf("strangeMode disengaged (%d)\n", strangeMode);
         }
         break;
     
@@ -188,6 +207,7 @@ void setup()
     }
 
     for (uint m = 0; m < 128; m++) midiFreq15[m] = float2fix15(midiFreq_Hz[m]);
+    printf("\n\n\n\n\n\n\n\n\n\n");
     
 }
 

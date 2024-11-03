@@ -46,7 +46,7 @@
 /********************
  * PROJECT DEFINES
  ********************/
-#define VERBOSE false // print note status and debugging messages
+#define VERBOSE true // print note status and debugging messages
 
 #define SAMPLE_RATE 40000 // audio sample rate in Hz
 #define SAMPLE_INTERVAL 1000000 / SAMPLE_RATE // timer callback interval in µs based on sample rate
