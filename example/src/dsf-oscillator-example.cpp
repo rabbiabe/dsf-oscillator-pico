@@ -313,15 +313,16 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
                 thisNote.active = true;
                 if (strangeMode) {
                     osc.freqs(midiFreq15[strangeModeRoots[strangeKeyIndex]], midiFreq15[thisNote.note], false);
+                    if (VERBOSE) printf("Note On: Strange Mode Carrier = %f, Modulator = %f (MIDI %d)\n", fix2float15(midiFreq15[strangeModeRoots[strangeKeyIndex]]), fix2float15(midiFreq15[thisNote.note]), thisNote.note);
                 } else {
                     fMod = multfix15(midiFreq15[thisNote.note], multfix15(modFactor15[multState], (isHarmonic ? one15 : root2)));
                     osc.freqs(midiFreq15[thisNote.note], fMod, false);
+                    if (VERBOSE) printf("Note On: %d (%f Hz)\n      >>> Carrier = %f, Modulator = %f\n", thisNote.note, midiFreq_Hz[thisNote.note], fix2float15(midiFreq15[thisNote.note]), fix2float15(fMod));
                 }
                 envMode = attack;
                 envelope = 0;
                 envCounter = 0;
                 gpio_put(PICO_DEFAULT_LED_PIN, true);
-                if (VERBOSE) printf("Note On: %d (%f Hz)\n      >>> Carrier = %f, Modulator = %f\n", thisNote.note, midiFreq_Hz[thisNote.note], fix2float15(midiFreq15[thisNote.note]), fix2float15(fMod));
                 break;
             
             case 0x80:

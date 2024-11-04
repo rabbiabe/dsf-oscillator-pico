@@ -13,6 +13,7 @@ Demo video
   * `/example`
     * `/lib`
       * `/MCP4725_PICO` DAC library (see "Dependencies" below)
+      * `/pico_encoder` Rotary encoder library (see "Dependencies" below)
       * `/usb_midi_host` USB-MIDI host library (see "Dependencies" below)
     * `/src` Example source code
   * `/resources` Hardware schematic for example program, Documentation images
@@ -49,7 +50,7 @@ The constructor takes care of a number of housekeeping/setup items:
 * `dac_bit_depth`: The DAC bit depth
 
 ### uint16_t getNextSample(fix15 param_a)
-This method returns the next sample and should be called repeatedly from a timer whose period is `1,000,000  / sample_rate` (i.e., the timer interval  in microseconds).
+This method returns the next sample and should be called repeatedly from a timer whose period is `1,000,000  / sample_rate` (i.e., the timer interval in microseconds).
 
 * `param_a`: Fixed-point representation of the `a` term in the synthesis equation. This method checks the condition `param_a_min15 < param_a < param_a_max15` and limits out-of-bounds values to stay within the specified range.
 
@@ -73,7 +74,13 @@ This method resets both sine and cosine counters.
 
 Example Program
 ===
-The example code implements monophonic oscillator with a built-in ADS envelope (I'm sure I could have worked out how to get R into that envelope but I didn't feel like working so hard for it) and support for USB-MIDI controllers.
+The example code implements a dual-mode monophonic oscillator with a built-in ADS envelope (I'm sure I could have worked out how to get R into that envelope but I didn't feel like working so hard for it) and support for USB-MIDI controllers. I built up the example so it could function completely independently, but the controls themselves are not super intuitive. For something like a Eurorack module you could go as simple as just three CV inputs for carrier, modulator, and `param_a`.
+
+### Standard Mode
+As a basic demonstration of the DSF Oscillator, Standard Mode uses the MIDI input note as carrier frequency and then supplies a modulator frequency that is either double or half the carrier when `isHarmonic` is `true`; when `isHarmonic` is `false`, the modulator frequency is also multiplied by `sqrt(2)` to create inharmonic tones. In Standard Mode there are buttons to control the modulator's multiplier and harmony as well as the envelope direction.
+
+### Strange Mode
+The DSF Oscillator opens the door to many more possibilities. To demonstrate just one, Strange Mode uses a fixed carrier frequency and then uses the MIDI input note as modulator. To switch into Strange Mode, press the rotary encoder button. Turning the encoder will select a carrier note. The code here implements 8 carrier notes because I had 8 pins left to use as LED indicators: C through B and then Bb as the final mode because jazz (yes, it's out of note order but it also seemed confusing to have just one flat. It's open source, do what you want with it). The envelope direction button still works in Strange Mode but the harmonic and multiplier functions have no effect.
 
 Hardware Setup
 ---
@@ -81,12 +88,13 @@ Hardware Setup
 
 ![Schematic](resources/dsf-example-schematic-3.2.png)
 
-The hardware uses three push buttons and three potentiometers for input, as well as relying on USB-MIDI for note input. Output goes through an MCP4725 12-bit i2c DAC, with two op amps in parallel driving a speaker. The schematic also shows hookups for indicator lights showing the state of the three `bool` flags controlled by the push buttons, with a key to the indicator colors shown in the [demo video](**need link for when that's done**).
+The hardware uses a rotary encoder, three push buttons, and three potentiometers for input, as well as relying on USB-MIDI for note input. Output goes through an MCP4725 12-bit i2c DAC, with two op amps in parallel ~~driving a speaker~~ outputting to an amplifier module (trying to drive the speaker directly from the breadboard was causing all sorts of problems). The schematic also shows hookups for indicator lights showing the state of the three `bool` flags controlled by the push buttons, with a key to the indicator colors shown in the [demo video](**need link for when that's done**).
 
 Example Code
 ---
 ### Dependencies
 * [MCP4725_PICO](https://github.com/gavinlyonsrepo/MCP4725_PICO) to control the DAC. Place in `/dsf-oscillator-pico/example/lib/MCP4725_PICO`
+* [pico_encoder](https://github.com/rabbiabe/pico_encoder) for rotary encoder control over Strange Mode. Place in `/dsf-oscillator-pico/example/lib/pico_encoder`
 * [usb_midi_host](https://github.com/rppicomidi/usb_midi_host) for MIDI input. Place in `/dsf-oscillator-pico/example/lib/usb_midi_host` and copy `tusb_config.h` into `/dsf-oscillator-pico/example/`
 
 ### Data Structures and Definitions
@@ -104,7 +112,9 @@ Example Code
 * `envRangeMin`, `envRangeMax`: integer values setting the boundaries of how many sample timer cycles to wait before incrementing/decrementing envelope. These values are calculated by scaling `ENV_TIME_x` by `param_a_range` and then dividing by `SAMPLE_INTERVAL` (i.e., the length between each timer call). These values are later used as the output boundaries in `uscale()` to calculate the actual envelope-segment timing. Using integer values here may result in envelope-length rounding errors on the order of +/-20ms. Rewriting the envelope code to use `fix15` instead of `uint8_t` would avoid these rounding errors but I doubt I could really hear a 20ms difference so I didn't bother. Also using `uint8_t` presents a theoretical limit of 6.4s per envelope segment which seems like plenty but if you were dying for a longer envelope switching to `uint16_t` should get you close to a half hour per segment. You do you.
 * `envInvert`: Within the envelope "Attack" indicates that `param_a` is incrementing and "Decay" indicates that it is decrementing, but the output may sound backward depending on other settings – sometimes sounding like it is "opening" during the attack phase and "closing" during the decay phase, sometimes vice versa. Behold my genius illustrations:
 
-![what's happening internally](resources/env1.jpg)    ![one way it sounds](resources/env2.jpg)    ![the other way it sounds](resources/env3.jpg)
+| what's happening internally | one way it sounds | the other way it sounds |
+| --- | --- | --- |
+| ![what's happening internally](resources/env1.jpg) | ![one way it sounds](resources/env2.jpg) | ![the other way it sounds](resources/env3.jpg)
 
 To me it sounds like the envelope "changes direction" depending on whether the modulator frequency is above or below the carrier frequency. **It's all rock 'n' roll so whatever sounds "good" to you** – I added this parameter so the user could easily invert the envelope if they want to change the envelope's apparent direction.
 
