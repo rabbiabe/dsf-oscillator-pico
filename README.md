@@ -127,6 +127,10 @@ To me it sounds like the envelope "changes direction" depending on whether the m
 * `isHarmonic`: state variable for whether we want harmonic or inharmonic output. When this is `false`, the modulator frequency is multiplied by `root2` to get an inharmonic tone.
 * `multState`: state variable that determines the relationship of carrier and modulator frequencies: half when `false`, double when `true`. There's no real restriction on how you determine carrier vs modulator frequency (and apparently no requirement that there be any fixed relationship between the two). I picked these two values because they consistently produced musically usable tones across a wide octave range. You could substitute any other two numbers for `modFactor15` and get different results without changing the functional code.
 
+#### Strange Mode
+* `strangeMode`: state variable for whether we are in Strange Mode or Standard Mode.
+* `strangeModeRoots[]`: eight MIDI notes to use for the carrier frequency. 
+* `strangeKeyIndex`: counter variable used to pick which element of `strangeModeRoots[]` to use as carrier note.
 
 Functions
 --- 
