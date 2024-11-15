@@ -5,7 +5,7 @@ I first learned about this synthesis method from [Prof. Aaron Lanterman's video]
 
 Demo video
 ===
-[Screen Shot of Demo Video Goes Here](**NEED LINK**)
+<video src='https://youtu.be/x0xxDAB70xU' width=180/>
 
 ### Folder Structure
 * `/dsf-oscillator-pico` Library source, CMakeLists.txt for example program
