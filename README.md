@@ -88,7 +88,7 @@ Hardware Setup
 
 ![Schematic](resources/dsf-example-schematic-3.2.png)
 
-The hardware uses a rotary encoder, three push buttons, and three potentiometers for input, as well as relying on USB-MIDI for note input. Output goes through an MCP4725 12-bit i2c DAC, with two op amps in parallel ~~driving a speaker~~ outputting to an amplifier module (trying to drive the speaker directly from the breadboard was causing all sorts of problems). The schematic also shows hookups for indicator lights showing the state of the three `bool` flags controlled by the push buttons, with a key to the indicator colors shown in the [demo video](**need link for when that's done**).
+The hardware uses a rotary encoder, three push buttons, and three potentiometers for input, as well as relying on USB-MIDI for note input. Output goes through an MCP4725 12-bit i2c DAC, with two op amps in parallel ~~driving a speaker~~ outputting to an amplifier module (trying to drive the speaker directly from the breadboard was causing all sorts of problems). The schematic also shows hookups for indicator lights showing the state of the three `bool` flags controlled by the push buttons, with a key to the indicator colors shown in the [demo video](https://youtu.be/x0xxDAB70xU).
 
 Example Code
 ---
